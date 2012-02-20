@@ -6,6 +6,8 @@ import java.applet.Applet;
 import java.applet.AppletContext;
 import java.applet.AppletStub;
 import java.awt.BorderLayout;
+import java.awt.Canvas;
+import java.awt.event.ActionEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
@@ -27,9 +29,11 @@ public class Loader extends JFrame implements AppletStub {
     
     private static final HashMap<String, String> params = new HashMap<String, String>();
     private static final String baseLink = "http://world2.runescape.com/";
-    private static String HTML = null, URL = null;
+    private static String HTML = null, URL = null, thisVersion = "1.1";
     public static DefaultListModel logItems;
-    private Applet canvas;
+    private File client = new File("runescape.jar");
+    private static boolean debug = false;
+    private JTabbedPane pane;
     
     public Loader() {
         try {
@@ -39,25 +43,93 @@ public class Loader extends JFrame implements AppletStub {
                 public void windowClosing(WindowEvent e) {
                     System.exit(0);
                 }
-            });            
+            });
+            JPanel toolsPanel = new JPanel();
+            pane = new JTabbedPane();
             logItems = new DefaultListModel();
             JList logWindow = new JList(logItems);
             JScrollPane scrollPane = new JScrollPane();
             logItems.add(0, "Starting up...");
             scrollPane.setViewportView(logWindow);
-            this.setTitle("Casper Loader by Anonymous");
-            this.setSize(790, 690);
+            this.setTitle("Casper Client by Anonymous");
             parseParams();
-            downloadFile(URL);
-            canvas = (Applet) new URLClassLoader(new URL[] {
-                new File("runescape.jar").toURL()}).loadClass(getMainClass()).newInstance();
-            canvas.setStub(this);
-            canvas.init();
-            canvas.start();
-            this.add(canvas, BorderLayout.CENTER);
-            this.add(scrollPane, BorderLayout.SOUTH);
-            this.setResizable(false);
+            if (needsUpdating() || !client.exists()) {
+                update();
+            }
+            addClient();
+            pane.addTab("Tools", toolsPanel);
+            scrollPane.setSize(50, this.getWidth());
+            this.getContentPane().add(pane, BorderLayout.CENTER);
+            if (debug) {
+                this.setSize(770, 678);
+                this.add(scrollPane, BorderLayout.SOUTH);
+            } else {
+                this.setSize(770, 590);
+            }
+            this.setLocationRelativeTo(null);
+            loadMenu();
             this.setVisible(true);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    
+    private void loadMenu() {
+        JMenuBar menu = new JMenuBar();
+        JMenuItem jMenuItem1 = new JMenuItem();
+        JMenuItem jMenuItem2 = new JMenuItem();
+        JMenuItem jMenuItem3 = new JMenuItem();
+        jMenuItem1.setText("Exit");
+        jMenuItem1.addActionListener(new java.awt.event.ActionListener() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                System.exit(0);
+            }
+        });
+        jMenuItem2.setText("Add Client Tab");
+        jMenuItem2.addActionListener(new java.awt.event.ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                addClient();
+            }
+        });
+        jMenuItem3.setText("Remove Selected Tab");
+        jMenuItem3.addActionListener(new java.awt.event.ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                removeTab();
+            }
+        });
+        JMenu fileMenu = new JMenu();
+        JMenu clientMenu = new JMenu();
+        fileMenu.setText("File");
+        fileMenu.add(jMenuItem1);
+        clientMenu.setText("Client");
+        clientMenu.add(jMenuItem2);
+        clientMenu.add(jMenuItem3);
+        menu.add(fileMenu);
+        menu.add(clientMenu);
+        this.setJMenuBar(menu);
+    }
+    
+    private void addClient() {
+        try {
+            Applet canvas = (Applet) new URLClassLoader(new URL[] {
+                    client.toURL()}).loadClass(getMainClass()).newInstance();
+                canvas.setStub(this);
+                canvas.init();
+                canvas.start();
+                pane.addTab("Client", canvas);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    
+    private void removeTab() {
+        try {
+            if (pane.getSelectedIndex() != -1) {
+                pane.removeTabAt(pane.getSelectedIndex());
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -66,7 +138,7 @@ public class Loader extends JFrame implements AppletStub {
     @Override
     public void appletResize(int width, int height) {
     }
-
+    
     public final URL getCodeBase() {
         try {
             return new URL(baseLink);
@@ -90,6 +162,27 @@ public class Loader extends JFrame implements AppletStub {
     
     public final AppletContext getAppletContext() {
         return null;
+    }
+    
+    private String getVersion() {
+        try {
+            URL url = new URL("https://raw.github.com/s0beit/Casper/master/version.txt");
+            BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()));
+            String version;
+            if ((version = in.readLine()) != null) {
+                return version;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    
+    private boolean needsUpdating() {
+        if (!getVersion().equals(thisVersion)) {
+            return true;
+        }
+        return false;
     }
     
     private final String getContent(String link) {
@@ -120,10 +213,10 @@ public class Loader extends JFrame implements AppletStub {
         return s;
     }
     
-    private void downloadFile(final String url) {
+    private void downloadFile(final String url, final String name) {
         try {
             BufferedInputStream in = new BufferedInputStream(new URL(url).openStream());
-            FileOutputStream fos = new FileOutputStream("runescape.jar");
+            FileOutputStream fos = new FileOutputStream(name);
             BufferedOutputStream bout = new BufferedOutputStream(fos, 1024);
             byte[] data = new byte[1024];
             int x = 0;
@@ -160,6 +253,20 @@ public class Loader extends JFrame implements AppletStub {
         }
     }
   
+    private void update() {
+        if (client.exists()) {
+            if (needsUpdating()) {
+                downloadFile("https://github.com/s0beit/Casper/blob/master/jar/Casper.jar?raw=true", "Casper_v" + getVersion() + ".jar");
+                client.delete();
+                downloadFile(URL, "runescape.jar");
+                JOptionPane.showMessageDialog(this, "Casper Client has been updated to version " + getVersion() + ", please run the updated client.", "Successfully Updated", JOptionPane.INFORMATION_MESSAGE);
+                System.exit(0);
+            }
+        } else {
+            downloadFile(URL, "runescape.jar");
+        }
+    }
+    
     private String remove(String str) {
         return str.replaceAll("\"", "");
     }
