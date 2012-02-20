@@ -1,5 +1,7 @@
 package org.casper;
 
+import javax.swing.plaf.basic.BasicLookAndFeel;
+
 import java.applet.Applet;
 import java.applet.AppletContext;
 import java.applet.AppletStub;
@@ -37,13 +39,13 @@ public class Loader extends JFrame implements AppletStub {
                 public void windowClosing(WindowEvent e) {
                     System.exit(0);
                 }
-            });
+            });            
             logItems = new DefaultListModel();
             JList logWindow = new JList(logItems);
             JScrollPane scrollPane = new JScrollPane();
             logItems.add(0, "Starting up...");
             scrollPane.setViewportView(logWindow);
-            this.setTitle("Casper Loader by s0beit");
+            this.setTitle("Casper Loader by Anonymous");
             this.setSize(790, 690);
             parseParams();
             downloadFile(URL);
